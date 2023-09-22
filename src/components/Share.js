@@ -16,7 +16,66 @@ async function getLocations() {
   const url = `${baseURL}location/?api_key=${APIKEY}`;
   const response = await fetch(url);
   const json = await response.json();
-  return json;
+  const sharedLocations = json.filter((location) => location.sharing);
+  return sharedLocations;
+}
+
+async function getLocationsToShareIds(sampleId) {
+  const url = `${baseURL}location/?api_key=${APIKEY}`;
+  const response = await fetch(url);
+  const json = await response.json();
+  const sharedLocations = json.filter((location) => location.sharing);
+  const sharedLocationsIds = sharedLocations.map((location) => location.id);
+
+  const sampleToLocationsUrl = `${baseURL}sampletolocation/?api_key=${APIKEY}`;
+  const sampleToLocationsResponse = await fetch(sampleToLocationsUrl);
+  const sampleToLocationsJson = await sampleToLocationsResponse.json();
+
+  const locationIdsToShareIds = {};
+
+  sharedLocationsIds.forEach((locationId) => {
+    const filtered = sampleToLocationsJson.filter(
+      (sampleToLocation) =>
+        sampleToLocation.location_id === locationId &&
+        sampleToLocation.sample_id === sampleId
+    );
+    locationIdsToShareIds[locationId] = filtered[0] ? filtered[0].id : null;
+  });
+
+  return locationIdsToShareIds;
+}
+
+async function getSampleToLocationId(locationId, sampleId) {
+  const url = `${baseURL}sampletolocation/?api_key=${APIKEY}`;
+  const response = await fetch(url);
+  const json = await response.json();
+  const filtered = json.filter(
+    (sampleToLocation) =>
+      sampleToLocation.sample_id === sampleId &&
+      sampleToLocation.location_id === locationId
+  );
+  return filtered[0] ? filtered[0].id : null;
+}
+
+async function getInitialLocationStates(sharedLocations, sampleId) {
+  const url = `${baseURL}sampletolocation/?api_key=${APIKEY}`;
+  const response = await fetch(url);
+  const json = await response.json();
+  const sharedLocationIds = sharedLocations.map((location) => location.id);
+  const filtered = json.filter((sampleToLocation) => {
+    return (
+      sampleToLocation.sample_id === sampleId &&
+      sharedLocationIds.includes(sampleToLocation.location_id)
+    );
+  });
+  const filteredIds = filtered.map(
+    (sampleToLocation) => sampleToLocation.location_id
+  );
+  const initialLocationStates = {};
+  sharedLocations.forEach((location) => {
+    initialLocationStates[location.id] = filteredIds.includes(location.id);
+  });
+  return initialLocationStates;
 }
 
 const ShareSample = () => {
@@ -39,12 +98,10 @@ const ShareSample = () => {
     async function fetchLocations() {
       const data = await getLocations();
       setLocations(data);
-
-      // Initialize location states based on whether sample is shared at each location
-      const initialLocationStates = {};
-      data.forEach((location) => {
-        initialLocationStates[location.id] = location.sharing;
-      });
+      const initialLocationStates = await getInitialLocationStates(
+        data,
+        parseInt(id)
+      );
       setLocationStates(initialLocationStates);
     }
 
@@ -59,13 +116,41 @@ const ShareSample = () => {
     // Implement your sample preview logic here
   };
 
-  const handleToggleLocation = (locationId) => {
+  const handleToggleLocation = async (locationId) => {
     // Toggle the state for the selected location
     const updatedLocationStates = { ...locationStates };
     updatedLocationStates[locationId] = !locationStates[locationId];
     setLocationStates(updatedLocationStates);
-
     // You can add logic to update the API here to reflect the change in sharing status
+
+    if (updatedLocationStates[locationId]) {
+      const data = {
+        api_key: APIKEY,
+        sample_id: id,
+        location_id: locationId,
+      };
+      await fetch(`${baseURL}sampletolocation/?api_key=${APIKEY}`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+    } else {
+      const sampleToLocationId = await getSampleToLocationId(
+        parseInt(locationId),
+        parseInt(id)
+      );
+      if (sampleToLocationId) {
+        await fetch(
+          `${baseURL}sampletolocation/${sampleToLocationId}/?api_key=${APIKEY}`,
+          {
+            method: "DELETE",
+          }
+        );
+      }
+    }
   };
 
   return (
