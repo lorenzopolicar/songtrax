@@ -4,6 +4,7 @@ import {
   toneObject,
   toneTransport,
   instrumentToTonePart,
+  instrumentToSampler,
 } from "../instruments";
 
 const APIKEY = "x090MWGARN";
@@ -67,6 +68,12 @@ const EditSample = () => {
     const updatedSequence = { ...sequence };
     updatedSequence[note][index] = !updatedSequence[note][index];
     setSequence(updatedSequence);
+    const now = toneObject.now();
+    instrumentToSampler[instrument].triggerAttackRelease(
+      `${note}3`,
+      "16n",
+      now
+    );
   };
 
   const handlePreview = async () => {

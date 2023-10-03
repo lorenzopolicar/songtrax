@@ -76,3 +76,10 @@ export const instrumentToTonePart = {
   //"French Horn": frenchHorn,
   Drums: tonePart1,
 };
+
+export const instrumentToSampler = {
+  //Piano: piano,
+  Guitar: guitar,
+  //"French Horn": frenchHorn,
+  Drums: drums,
+};
