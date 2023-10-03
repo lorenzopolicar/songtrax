@@ -1,56 +1,82 @@
-import fetch from "node-fetch";
-
 const APIKEY = "x090MWGARN";
-
 const baseURL = "https://comp2140.uqcloud.net/api/";
 
-async function getSamples() {
+export async function getSamples() {
   const url = `${baseURL}sample/?api_key=${APIKEY}`;
   const response = await fetch(url);
   const json = await response.json();
   return json;
 }
 
-async function getSample(id) {
-  const url = `${baseURL}sample/${id}/?api_key=${APIKEY}`;
+export async function getSample(sampleId) {
+  const url = `${baseURL}sample/${sampleId}/?api_key=${APIKEY}`;
   const response = await fetch(url);
   const json = await response.json();
   return json;
 }
 
-async function CreateSample() {
-  const url = `${baseURL}sample/?api_key=${APIKEY}`;
+export async function getLocations() {
+  const url = `${baseURL}location/?api_key=${APIKEY}`;
+  const response = await fetch(url);
+  const json = await response.json();
+  const sharedLocations = json.filter((location) => location.sharing);
+  return sharedLocations;
+}
 
-  const recording_data = [];
-  const data = {
-    type: "piano",
-    name: "Best Pop Song",
-    recording_data: JSON.stringify(recording_data),
-    api_key: APIKEY,
-  };
+export async function getLocationsToShareIds(sampleId) {
+  const url = `${baseURL}location/?api_key=${APIKEY}`;
+  const response = await fetch(url);
+  const json = await response.json();
+  const sharedLocations = json.filter((location) => location.sharing);
+  const sharedLocationsIds = sharedLocations.map((location) => location.id);
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
+  const sampleToLocationsUrl = `${baseURL}sampletolocation/?api_key=${APIKEY}`;
+  const sampleToLocationsResponse = await fetch(sampleToLocationsUrl);
+  const sampleToLocationsJson = await sampleToLocationsResponse.json();
+
+  const locationIdsToShareIds = {};
+
+  sharedLocationsIds.forEach((locationId) => {
+    const filtered = sampleToLocationsJson.filter(
+      (sampleToLocation) =>
+        sampleToLocation.location_id === locationId &&
+        sampleToLocation.sample_id === sampleId
+    );
+    locationIdsToShareIds[locationId] = filtered[0] ? filtered[0].id : null;
   });
+
+  return locationIdsToShareIds;
+}
+
+export async function getSampleToLocationId(locationId, sampleId) {
+  const url = `${baseURL}sampletolocation/?api_key=${APIKEY}`;
+  const response = await fetch(url);
   const json = await response.json();
-  return json;
+  const filtered = json.filter(
+    (sampleToLocation) =>
+      sampleToLocation.sample_id === sampleId &&
+      sampleToLocation.location_id === locationId
+  );
+  return filtered[0] ? filtered[0].id : null;
 }
 
-async function main() {
-  const all_samples = await getSamples();
-  const single_sample = await getSample(4);
-  const created_sample = await CreateSample();
-
-  console.log("Results from Calling getSamples()", all_samples);
-
-  console.log("Result from Calling getSample(4)", single_sample);
-
-  console.log("Result from Calling CreateSample()", created_sample);
+export async function getInitialLocationStates(sharedLocations, sampleId) {
+  const url = `${baseURL}sampletolocation/?api_key=${APIKEY}`;
+  const response = await fetch(url);
+  const json = await response.json();
+  const sharedLocationIds = sharedLocations.map((location) => location.id);
+  const filtered = json.filter((sampleToLocation) => {
+    return (
+      sampleToLocation.sample_id === sampleId &&
+      sharedLocationIds.includes(sampleToLocation.location_id)
+    );
+  });
+  const filteredIds = filtered.map(
+    (sampleToLocation) => sampleToLocation.location_id
+  );
+  const initialLocationStates = {};
+  sharedLocations.forEach((location) => {
+    initialLocationStates[location.id] = filteredIds.includes(location.id);
+  });
+  return initialLocationStates;
 }
-
-main();

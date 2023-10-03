@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import {
+  toneObject,
+  toneTransport,
+  instrumentToTonePart,
+} from "../instruments";
 
 const APIKEY = "x090MWGARN";
 const baseURL = "https://comp2140.uqcloud.net/api/";
@@ -64,8 +69,35 @@ const EditSample = () => {
     setSequence(updatedSequence);
   };
 
-  const handlePreview = () => {
-    setIsPreviewing(!isPreviewing);
+  const handlePreview = async () => {
+    toneObject.start();
+    toneTransport.stop();
+
+    if (isPreviewing) {
+      // Stop the preview
+      setIsPreviewing(false);
+      // sampler.releaseAll();
+    } else {
+      // Start the preview
+      setIsPreviewing(true);
+      instrumentToTonePart[instrument].clear();
+      toneTransport.cancel();
+
+      for (const note in sequence) {
+        sequence[note].forEach((toggled, index) => {
+          if (toggled) {
+            instrumentToTonePart[instrument].add(index / 4, `${note}3`);
+          }
+        });
+      }
+
+      toneTransport.schedule((time) => {
+        setIsPreviewing(false);
+        console.log("Preview stopped automatically.");
+      }, 16 / 4);
+
+      toneTransport.start();
+    }
   };
 
   const handleSaveSample = async () => {
@@ -112,6 +144,13 @@ const EditSample = () => {
           placeholder="Enter Sample Name"
         ></input>
         <div className="button-group-container">
+          <button
+            type="button"
+            className={isPreviewing ? "bright-button" : "dark-button"}
+            onClick={handlePreview}
+          >
+            {isPreviewing ? "Stop" : "Preview"}
+          </button>
           <button
             type="button"
             className="bright-button"
