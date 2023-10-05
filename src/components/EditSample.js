@@ -9,10 +9,22 @@ import {
 import { APIKEY, baseURL, getSample } from "../api/api";
 import BackArrow from "./BackArrow";
 
+/**
+ * EditSample Component
+ *
+ * This component renders a create/edit sample page that allows users to create/edit a sample.
+ * Users can make a sample by toggling notes on a grid and previewing the sample.
+ * Users can also save the sample.
+ *
+ * @returns {JSX.Element} JSX element representing the EditSample component.
+ */
 const EditSample = () => {
   const { id } = useParams();
+
+  // checks whether the user is editing or creating a sample
   const isEditing = !!id;
 
+  // Use state to keep track of the sample name, instrument, and sequence
   const [sampleName, setSampleName] = useState("");
   const [instrument, setInstrument] = useState("Piano");
   const [sequence, setSequence] = useState({
@@ -24,9 +36,17 @@ const EditSample = () => {
     D: Array(16).fill(false),
     C: Array(16).fill(false),
   });
+
+  // Use state to keep track of whether the sample is being previewed
   const [isPreviewing, setIsPreviewing] = useState(false);
+
+  // Use state to keep track of whether the sample is being saved
   const [isSaving, setIsSaving] = useState(false);
+
+  // Use state to keep track of whether the sample has been saved
   const [saved, setSaved] = useState(false);
+
+  // Use state to keep track of the sample id for when the sample is saved in create mode
   const [sampleId, setSampleId] = useState(id);
 
   useEffect(() => {
@@ -42,10 +62,20 @@ const EditSample = () => {
     }
   }, [id, isEditing]);
 
+  /**
+   * handles the change of the sample name.
+   * @param {Object} e - The event object.
+   * @returns {undefined}
+   */
   const handleSampleNameChange = (e) => {
     setSampleName(e.target.value);
   };
 
+  /**
+   * handles the change of the instrument.
+   * @param {string} selectedInstrument - The instrument to change to.
+   * @returns {undefined}
+   */
   const handleInstrumentChange = (selectedInstrument) => {
     setInstrument(selectedInstrument);
     setSequence({
@@ -59,6 +89,10 @@ const EditSample = () => {
     });
   };
 
+  /**
+   * handles the toggling of a note at a specific index.
+   * @param {string} note - The note to toggle.
+   */
   const handleNoteToggle = (note) => (index) => {
     const updatedSequence = { ...sequence };
     updatedSequence[note][index] = !updatedSequence[note][index];
@@ -71,6 +105,10 @@ const EditSample = () => {
     );
   };
 
+  /**
+   * handles the previewing of a sample.
+   * @returns {undefined}
+   */
   const handlePreview = async () => {
     toneObject.start();
     toneTransport.stop();
@@ -101,6 +139,10 @@ const EditSample = () => {
     }
   };
 
+  /**
+   * handles the saving of a sample.
+   * @returns {undefined}
+   */
   const handleSaveSample = async () => {
     setIsSaving(true);
 

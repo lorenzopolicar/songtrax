@@ -16,12 +16,23 @@ import {
 import BackArrow from "./BackArrow.js";
 import convertDate from "../dateConverter.js";
 
+/**
+ * ShareSample Component
+ *
+ * This component renders a share sample page that allows users to share a sample
+ * with locations.
+ *
+ * @returns {JSX.Element} JSX element representing the ShareSample component.
+ */
 const ShareSample = () => {
   const { id } = useParams();
   const isEditing = !!id;
 
+  // Use state to keep track of the sample and location data
   const [sample, setSample] = useState(null);
   const [locations, setLocations] = useState([]);
+
+  // Use state to keep track of whether the sample is being previewed
   const [isPreviewing, setIsPreviewing] = useState(false);
 
   // Use state to keep track of the selected state for each location
@@ -51,6 +62,12 @@ const ShareSample = () => {
     fetchLocations();
   }, [id, isEditing]);
 
+  /**
+   * handles the previewing of a sample.
+   *
+   * @returns {undefined}
+   * @async
+   */
   const handlePreview = async () => {
     const sequence = JSON.parse(sample.recording_data) || {};
     const instrument = sample.type;
@@ -83,6 +100,14 @@ const ShareSample = () => {
     }
   };
 
+  /**
+   * handles the toggling of a location.
+   *
+   * @param {number} locationId - The ID of the location to toggle.
+   * @param {boolean} share - Whether the location should be shared or not.
+   * @returns {undefined}
+   * @async
+   */
   const handleToggleLocation = async (locationId, share) => {
     // Toggle the state for the selected location
     if (

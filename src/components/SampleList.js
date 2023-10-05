@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom"; // Import Link from React Router
+import { Link } from "react-router-dom";
 import Sample from "./Sample";
 import { getSamples } from "../api/api.js";
 
+/**
+ * SampleList Component
+ *
+ * This component renders a list of samples.
+ *
+ * @returns {JSX.Element} JSX element representing the SampleList component.
+ */
 const SampleList = () => {
+  // Use state to keep track of the sample data
   const [samples, setSamples] = useState([]);
 
   useEffect(() => {

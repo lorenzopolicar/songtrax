@@ -8,12 +8,29 @@ import {
 import { useState } from "react";
 import convertDate from "../dateConverter";
 
+/**
+ * Sample Component
+ *
+ * This component renders a sample card that displays the name and date
+ * of a sample and allows users to preview, share, and edit the sample.
+ *
+ * @param {Object} sample - The sample object to render.
+ * @returns {JSX.Element} JSX element representing the Sample component.
+ */
 const Sample = ({ sample }) => {
+  // Use state to keep track of whether the sample is being previewed
   const [isPreviewing, setIsPreviewing] = useState(false);
 
+  // for previewing
   const sequence = JSON.parse(sample.recording_data) || {};
   const instrument = sample.type;
 
+  /**
+   * handles the previewing of a sample.
+   *
+   * @returns {undefined}
+   * @async
+   */
   const handlePreview = async () => {
     toneObject.start();
     toneTransport.stop();
