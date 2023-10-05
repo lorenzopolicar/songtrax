@@ -5,41 +5,8 @@ import {
   toneTransport,
   instrumentToTonePart,
 } from "../instruments";
-import { useState, useEffect } from "react";
-import { getSample } from "../api/api";
-
-function convertDate(date) {
-  // Create a Date object from the input string
-  const datetime = new Date(date);
-
-  // Define an array of month names
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  // Extract the components (hour, minute, day, month, year) from the Date object
-  const hour = datetime.getUTCHours().toString().padStart(2, "0");
-  const minute = datetime.getUTCMinutes().toString().padStart(2, "0");
-  const day = datetime.getUTCDate().toString();
-  const month = monthNames[datetime.getUTCMonth()];
-  const year = datetime.getUTCFullYear().toString();
-
-  // Create the formatted string
-  const formattedDatetime = `${hour}:${minute} on ${day} ${month} ${year}`;
-
-  return formattedDatetime;
-}
+import { useState } from "react";
+import convertDate from "../dateConverter";
 
 const Sample = ({ sample }) => {
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -87,7 +54,7 @@ const Sample = ({ sample }) => {
         <div className="button-group-container">
           <button
             type="button"
-            className={isPreviewing ? "bright-button" : "dark-button"}
+            className={isPreviewing ? "dark-button" : "bright-button"}
             onClick={handlePreview}
           >
             {isPreviewing ? "Stop" : "Preview"}

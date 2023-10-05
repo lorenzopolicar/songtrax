@@ -6,16 +6,8 @@ import {
   instrumentToTonePart,
   instrumentToSampler,
 } from "../instruments";
-
-const APIKEY = "x090MWGARN";
-const baseURL = "https://comp2140.uqcloud.net/api/";
-
-async function getSample(sampleId) {
-  const url = `${baseURL}sample/${sampleId}/?api_key=${APIKEY}`;
-  const response = await fetch(url);
-  const json = await response.json();
-  return json;
-}
+import { APIKEY, baseURL, getSample } from "../api/api";
+import BackArrow from "./BackArrow";
 
 const EditSample = () => {
   const { id } = useParams();
@@ -34,8 +26,11 @@ const EditSample = () => {
   });
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [sampleId, setSampleId] = useState(id);
 
   useEffect(() => {
+    // If editing, fetch the sample data
     if (isEditing) {
       async function fetchSample() {
         const data = await getSample(id);
@@ -83,7 +78,6 @@ const EditSample = () => {
     if (isPreviewing) {
       // Stop the preview
       setIsPreviewing(false);
-      // sampler.releaseAll();
     } else {
       // Start the preview
       setIsPreviewing(true);
@@ -117,8 +111,9 @@ const EditSample = () => {
       api_key: APIKEY,
     };
 
-    if (isEditing) {
-      await fetch(`${baseURL}sample/${id}/?api_key=${APIKEY}`, {
+    // for edit mode or when the sample has been saved in create mode
+    if (isEditing || saved) {
+      await fetch(`${baseURL}sample/${sampleId}/?api_key=${APIKEY}`, {
         method: "PUT",
         headers: {
           Accept: "application/json",
@@ -126,8 +121,9 @@ const EditSample = () => {
         },
         body: JSON.stringify(data),
       });
-    } else {
-      await fetch(`${baseURL}sample/?api_key=${APIKEY}`, {
+      // for create mode when the sample has not been saved
+    } else if (!saved) {
+      const response = await fetch(`${baseURL}sample/?api_key=${APIKEY}`, {
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -135,6 +131,9 @@ const EditSample = () => {
         },
         body: JSON.stringify(data),
       });
+      const json = await response.json();
+      setSaved(true);
+      setSampleId(json.id);
     }
 
     setIsSaving(false);
@@ -142,6 +141,7 @@ const EditSample = () => {
 
   return (
     <main>
+      <BackArrow />
       <h2 className="title">{isEditing ? "Edit Sample" : "Create Sample"}:</h2>
       <form className="card edit-card">
         <input
@@ -202,16 +202,6 @@ const EditSample = () => {
           </div>
         </div>
       ))}
-
-      <div className="button-group-container">
-        <button
-          type="button"
-          className={isPreviewing ? "bright-button" : "dark-button"}
-          onClick={handlePreview}
-        >
-          {isPreviewing ? "Stop Previewing" : "Preview"}
-        </button>
-      </div>
     </main>
   );
 };

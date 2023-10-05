@@ -1,82 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-//import Tone from "tone";
-
-const APIKEY = "x090MWGARN";
-const baseURL = "https://comp2140.uqcloud.net/api/";
-
-async function getSample(sampleId) {
-  const url = `${baseURL}sample/${sampleId}/?api_key=${APIKEY}`;
-  const response = await fetch(url);
-  const json = await response.json();
-  return json;
-}
-
-async function getLocations() {
-  const url = `${baseURL}location/?api_key=${APIKEY}`;
-  const response = await fetch(url);
-  const json = await response.json();
-  const sharedLocations = json.filter((location) => location.sharing);
-  return sharedLocations;
-}
-
-async function getLocationsToShareIds(sampleId) {
-  const url = `${baseURL}location/?api_key=${APIKEY}`;
-  const response = await fetch(url);
-  const json = await response.json();
-  const sharedLocations = json.filter((location) => location.sharing);
-  const sharedLocationsIds = sharedLocations.map((location) => location.id);
-
-  const sampleToLocationsUrl = `${baseURL}sampletolocation/?api_key=${APIKEY}`;
-  const sampleToLocationsResponse = await fetch(sampleToLocationsUrl);
-  const sampleToLocationsJson = await sampleToLocationsResponse.json();
-
-  const locationIdsToShareIds = {};
-
-  sharedLocationsIds.forEach((locationId) => {
-    const filtered = sampleToLocationsJson.filter(
-      (sampleToLocation) =>
-        sampleToLocation.location_id === locationId &&
-        sampleToLocation.sample_id === sampleId
-    );
-    locationIdsToShareIds[locationId] = filtered[0] ? filtered[0].id : null;
-  });
-
-  return locationIdsToShareIds;
-}
-
-async function getSampleToLocationId(locationId, sampleId) {
-  const url = `${baseURL}sampletolocation/?api_key=${APIKEY}`;
-  const response = await fetch(url);
-  const json = await response.json();
-  const filtered = json.filter(
-    (sampleToLocation) =>
-      sampleToLocation.sample_id === sampleId &&
-      sampleToLocation.location_id === locationId
-  );
-  return filtered[0] ? filtered[0].id : null;
-}
-
-async function getInitialLocationStates(sharedLocations, sampleId) {
-  const url = `${baseURL}sampletolocation/?api_key=${APIKEY}`;
-  const response = await fetch(url);
-  const json = await response.json();
-  const sharedLocationIds = sharedLocations.map((location) => location.id);
-  const filtered = json.filter((sampleToLocation) => {
-    return (
-      sampleToLocation.sample_id === sampleId &&
-      sharedLocationIds.includes(sampleToLocation.location_id)
-    );
-  });
-  const filteredIds = filtered.map(
-    (sampleToLocation) => sampleToLocation.location_id
-  );
-  const initialLocationStates = {};
-  sharedLocations.forEach((location) => {
-    initialLocationStates[location.id] = filteredIds.includes(location.id);
-  });
-  return initialLocationStates;
-}
+import {
+  toneObject,
+  toneTransport,
+  instrumentToTonePart,
+} from "../instruments";
+import {
+  getSample,
+  getLocations,
+  getSampleToLocationId,
+  getInitialLocationStates,
+  APIKEY,
+  baseURL,
+} from "../api/api.js";
+import BackArrow from "./BackArrow.js";
+import convertDate from "../dateConverter.js";
 
 const ShareSample = () => {
   const { id } = useParams();
@@ -98,6 +36,7 @@ const ShareSample = () => {
     async function fetchLocations() {
       const data = await getLocations();
       setLocations(data);
+      // Get the initial location states for the sample
       const initialLocationStates = await getInitialLocationStates(
         data,
         parseInt(id)
@@ -113,15 +52,48 @@ const ShareSample = () => {
   }, [id, isEditing]);
 
   const handlePreview = async () => {
-    // Implement your sample preview logic here
+    const sequence = JSON.parse(sample.recording_data) || {};
+    const instrument = sample.type;
+    toneObject.start();
+    toneTransport.stop();
+
+    if (isPreviewing) {
+      // Stop the preview
+      setIsPreviewing(false);
+    } else {
+      // Start the preview
+      setIsPreviewing(true);
+      instrumentToTonePart[instrument].clear();
+      toneTransport.cancel();
+
+      for (const note in sequence) {
+        sequence[note].forEach((toggled, index) => {
+          if (toggled) {
+            instrumentToTonePart[instrument].add(index / 4, `${note}3`);
+          }
+        });
+      }
+
+      toneTransport.schedule((time) => {
+        setIsPreviewing(false);
+        console.log("Preview stopped automatically.");
+      }, 16 / 4);
+
+      toneTransport.start();
+    }
   };
 
-  const handleToggleLocation = async (locationId) => {
+  const handleToggleLocation = async (locationId, share) => {
     // Toggle the state for the selected location
+    if (
+      (share && locationStates[locationId]) ||
+      (!share && !locationStates[locationId])
+    ) {
+      return;
+    }
     const updatedLocationStates = { ...locationStates };
     updatedLocationStates[locationId] = !locationStates[locationId];
     setLocationStates(updatedLocationStates);
-    // You can add logic to update the API here to reflect the change in sharing status
 
     if (updatedLocationStates[locationId]) {
       const data = {
@@ -155,12 +127,13 @@ const ShareSample = () => {
 
   return (
     <main>
+      <BackArrow />
       <h2 className="title">Share This Sample</h2>
       {sample && (
         <div className="card">
           <div className="song-details">
             <h3>{sample.name}</h3>
-            <p>Date Created</p>
+            <p>{convertDate(sample.datetime)}</p>
           </div>
           <div className="buttons">
             <button className="bright-button" onClick={handlePreview}>
@@ -179,9 +152,17 @@ const ShareSample = () => {
               className={
                 locationStates[location.id] ? "toggle-selected" : "toggle"
               }
-              onClick={() => handleToggleLocation(location.id)}
+              onClick={() => handleToggleLocation(location.id, true)}
             >
-              {locationStates[location.id] ? "Shared" : "Not Shared"}
+              {"Shared"}
+            </button>
+            <button
+              className={
+                !locationStates[location.id] ? "toggle-selected" : "toggle"
+              }
+              onClick={() => handleToggleLocation(location.id, false)}
+            >
+              {"Not Shared"}
             </button>
           </div>
         </div>
